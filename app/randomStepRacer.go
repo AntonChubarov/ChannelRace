@@ -1,44 +1,50 @@
 package app
 
 import (
+	"RacersRace/domain"
 	"math/rand"
 	"time"
 )
 
 type RandomStepRacer struct {
-	Name string
-	judgeChan chan bool
-	infoChan
-	Step int
-	Score int
-	Lap int
+	Name     string
+	stepChan chan time.Time
+	infoChan chan domain.RacerInfo
+	Step     int
+	Score    int
+	Lap      int
 	IsActive bool
 }
 
-func NewRandomStepRacer(name string, judgeChan chan bool) *RandomStepRacer {
+func NewRandomStepRacer(name string, sChan chan time.Time, iChan chan domain.RacerInfo) *RandomStepRacer {
 	return &RandomStepRacer{
-		Name: name,
-		judgeChan: judgeChan,
-		Step: 0,
-		Score: 0,
-		Lap:1,
+		Name:     name,
+		stepChan: sChan,
+		infoChan: iChan,
+		Step:     0,
+		Score:    0,
+		Lap:      1,
 		IsActive: true,
 	}
 }
 
 func (r RandomStepRacer) StartRace() {
 	for r.IsActive {
-		<- r.judgeChan
+		<- r.stepChan
 		r.makeStep()
+		r.infoChan <- domain.RacerInfo{
+			Name: r.Name,
+			Step: r.Step,
+			Score: r.Score,
+			Lap: r.Lap,
+			IsActive: r.IsActive,
+		}
 	}
 }
 
-func (r RandomStepRacer) GiveInfo() {
-	panic("implement me")
-}
-
 func (r RandomStepRacer) StopRace() {
-	panic("implement me")
+	r.IsActive = false
+	close(r.infoChan)
 }
 
 func (r RandomStepRacer) makeStep() {

@@ -2,7 +2,6 @@ package domain
 
 type Racer interface {
 	StartRace()
-	GiveInfo()
 	StopRace()
 }
 
