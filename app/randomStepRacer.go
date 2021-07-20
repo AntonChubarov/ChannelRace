@@ -13,7 +13,6 @@ type RandomStepRacer struct {
 	Step     int
 	Score    int
 	Lap      int
-	IsActive bool
 }
 
 func NewRandomStepRacer(name string, sChan chan time.Time, iChan chan domain.RacerInfo) *RandomStepRacer {
@@ -24,12 +23,11 @@ func NewRandomStepRacer(name string, sChan chan time.Time, iChan chan domain.Rac
 		Step:     0,
 		Score:    0,
 		Lap:      1,
-		IsActive: true,
 	}
 }
 
-func (r RandomStepRacer) StartRace() {
-	for r.IsActive {
+func (r *RandomStepRacer) StartRace() {
+	for {
 		<- r.stepChan
 		r.makeStep()
 		r.infoChan <- domain.RacerInfo{
@@ -37,17 +35,12 @@ func (r RandomStepRacer) StartRace() {
 			Step: r.Step,
 			Score: r.Score,
 			Lap: r.Lap,
-			IsActive: r.IsActive,
 		}
+		time.Sleep(200*time.Millisecond)
 	}
 }
 
-func (r RandomStepRacer) StopRace() {
-	r.IsActive = false
-	close(r.infoChan)
-}
-
-func (r RandomStepRacer) makeStep() {
+func (r *RandomStepRacer) makeStep() {
 	rand.Seed(time.Now().UnixNano())
 	points := 1 + rand.Intn(4)
 	r.Step++

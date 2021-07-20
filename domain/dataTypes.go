@@ -5,5 +5,4 @@ type RacerInfo struct {
 	Step int
 	Score int
 	Lap int
-	IsActive bool
 }

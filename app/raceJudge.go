@@ -6,73 +6,76 @@ import (
 )
 
 type JudgeOfRace struct {
-	RacersInfo *[]domain.RacerInfo
-	StepTicker *time.Ticker
-	StepChannel chan time.Time
-	DisplayTicker *time.Ticker
+	RacersInfo     []domain.RacerInfo
+	StepTicker     *time.Ticker
+	StepChannel    []chan time.Time
+	DisplayTicker  *time.Ticker
 	DisplayChannel chan []domain.RacerInfo
+	InfoChannels   []chan domain.RacerInfo
 }
 
-func NewRaceJudge(stepChannel chan time.Time, infoChannels []chan domain.RacerInfo) *JudgeOfRace {
+func NewRaceJudge(stepChannel []chan time.Time, infoChannels []chan domain.RacerInfo, displayChannel chan []domain.RacerInfo) *JudgeOfRace {
 	return &JudgeOfRace{
-		RacersInfo: runRacersInfoCollect(infoChannels),
-		StepChannel: stepChannel,
+		RacersInfo: make([]domain.RacerInfo, len(infoChannels)),
+		StepChannel:    stepChannel,
+		DisplayChannel: displayChannel,
+		InfoChannels:   infoChannels,
 	}
 }
 
 func (j *JudgeOfRace) StartRace() {
-	go runStepTicker(j.StepChannel)
-	go runDisplayTicker(j.DisplayChannel, j.RacersInfo)
+	go j.runStepTicker()
+	go j.runDisplayTicker()
+	go j.runRacersInfoCollect()
+	go j.startToJudge()
 }
 
-func runRacersInfoCollect(infoChannels []chan domain.RacerInfo) *[]domain.RacerInfo {
-
-	info := make([]domain.RacerInfo, len(infoChannels), len(infoChannels))
-	go func(*[]domain.RacerInfo) {
-		var ok bool
-		var in domain.RacerInfo
-		for {
-			for i := range infoChannels {
-				if in, ok = <-infoChannels[i]; ok {
-					info[i] = in
-				}
+func (j *JudgeOfRace) runRacersInfoCollect() {
+	var ok bool
+	var in domain.RacerInfo
+	for {
+		for i := range j.InfoChannels {
+			if in, ok = <-j.InfoChannels[i]; ok {
+				j.RacersInfo[i] = in
 			}
 		}
-	}(&info)
-
-	return &info
+		time.Sleep(200*time.Millisecond)
+	}
 }
 
-func runStepTicker(stepChannel chan time.Time) {
-	stepTicker := time.NewTicker(time.Second)
+func (j *JudgeOfRace) runStepTicker() {
+	j.StepTicker = time.NewTicker(time.Second)
 	var s time.Time
-	Loop:
+
 	for {
-		s = <- stepTicker.C
-		select{
-		case stepChannel <- s:
+		select {
+		case s = <-j.StepTicker.C:
+			for i := range j.StepChannel {
+				j.StepChannel[i] <- s
+			}
+		default:
 			continue
-		default:
-			break Loop
 		}
+		time.Sleep(200*time.Millisecond)
 	}
-	return
 }
 
-func runDisplayTicker(displayChannel chan []domain.RacerInfo, racersInfo *[]domain.RacerInfo) {
-	displayTicker := time.NewTicker(3 * time.Second)
-Loop:
+func (j *JudgeOfRace) runDisplayTicker() {
+	j.DisplayTicker = time.NewTicker(3 * time.Second)
+
 	for {
-		select{
-		case <- displayTicker.C:
-			displayChannel <- *racersInfo
+		select {
+		case <-j.DisplayTicker.C:
+			j.DisplayChannel <- j.RacersInfo
 		default:
-			break Loop
+			continue
 		}
+		time.Sleep(200*time.Millisecond)
 	}
-	return
 }
 
-func ToJudge() {
-
+func (j *JudgeOfRace) startToJudge() {
+	for {
+		time.Sleep(200*time.Millisecond)
+	}
 }
