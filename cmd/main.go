@@ -9,15 +9,15 @@ import (
 )
 
 func main() {
-	numOfRacers := 5;
+	racers := make([]*app.RandomStepRacer, domain.Racers, domain.Racers)
 
-	racers := make([]*app.RandomStepRacer, numOfRacers, numOfRacers)
+	stepChannel := make([]chan time.Time, domain.Racers, domain.Racers)
 
-	stepChannel := make([]chan time.Time, numOfRacers, numOfRacers)
-
-	infoChannels := make([]chan domain.RacerInfo, numOfRacers, numOfRacers)
+	infoChannels := make([]chan domain.RacerInfo, domain.Racers, domain.Racers)
 
 	displayChannel := make(chan []domain.RacerInfo)
+
+	stopChannel := make (chan bool)
 
 	for i := range racers {
 		racerNumber := strconv.Itoa(i)
@@ -30,7 +30,7 @@ func main() {
 		go racers[i].StartRace()
 	}
 
-	judge := app.NewRaceJudge(stepChannel, infoChannels, displayChannel)
+	judge := app.NewRaceJudge(stepChannel, infoChannels, displayChannel, stopChannel)
 
 	display := infrastructure.NewConsole(displayChannel)
 
@@ -39,6 +39,7 @@ func main() {
 	go judge.StartRace()
 
 	for {
-		time.Sleep(time.Second)
+		<- stopChannel
+		return
 	}
 }

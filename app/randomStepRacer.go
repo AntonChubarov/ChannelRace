@@ -36,7 +36,7 @@ func (r *RandomStepRacer) StartRace() {
 			Score: r.Score,
 			Lap: r.Lap,
 		}
-		time.Sleep(200*time.Millisecond)
+		time.Sleep(domain.LoopSleepTime)
 	}
 }
 
