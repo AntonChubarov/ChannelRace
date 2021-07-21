@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	numOfRacers := 20;
+	numOfRacers := 5;
 
 	racers := make([]*app.RandomStepRacer, numOfRacers, numOfRacers)
 

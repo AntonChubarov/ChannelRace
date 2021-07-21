@@ -42,7 +42,7 @@ func (r *RandomStepRacer) StartRace() {
 
 func (r *RandomStepRacer) makeStep() {
 	rand.Seed(time.Now().UnixNano())
-	points := 1 + rand.Intn(4)
+	points := 1 + rand.Intn(6)
 	r.Step++
 	r.Score += points
 	r.Lap = 1 + r.Score / 50
