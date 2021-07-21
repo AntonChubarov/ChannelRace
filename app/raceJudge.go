@@ -9,15 +9,15 @@ import (
 )
 
 type JudgeOfRace struct {
-	RacersInfo     []domain.RacerInfo
-	StepTicker     *time.Ticker
-	StepChannel    []chan time.Time
-	DisplayTicker  *time.Ticker
-	DisplayChannel chan []domain.RacerInfo
-	InfoChannels   []chan domain.RacerInfo
-	StopChannel chan bool
-	InactiveRacers []bool
-	InactiveCount int
+	RacersInfo      []domain.RacerInfo
+	StepTicker      *time.Ticker
+	StepChannel     []chan time.Time
+	DisplayTicker   *time.Ticker
+	DisplayChannel  chan []domain.RacerInfo
+	InfoChannels    []chan domain.RacerInfo
+	StopChannel     chan bool
+	IsInactiveRacer []bool
+	InactiveCount   int
 	MutexRacersInfo sync.RWMutex
 }
 
@@ -28,12 +28,12 @@ func NewRaceJudge(
 	stopChannel chan bool,
 	) *JudgeOfRace {
 	return &JudgeOfRace{
-		RacersInfo: make([]domain.RacerInfo, len(infoChannels)),
-		StepChannel:    stepChannel,
-		DisplayChannel: displayChannel,
-		InfoChannels:   infoChannels,
-		StopChannel: stopChannel,
-		InactiveRacers: make([]bool, len(infoChannels)),
+		RacersInfo:      make([]domain.RacerInfo, len(infoChannels)),
+		StepChannel:     stepChannel,
+		DisplayChannel:  displayChannel,
+		InfoChannels:    infoChannels,
+		StopChannel:     stopChannel,
+		IsInactiveRacer: make([]bool, len(infoChannels)),
 		MutexRacersInfo: sync.RWMutex{},
 	}
 }
@@ -46,17 +46,23 @@ func (j *JudgeOfRace) StartRace() {
 }
 
 func (j *JudgeOfRace) runRacersInfoCollect() {
+
 	var ok bool
 	var in domain.RacerInfo
 	for {
+		time.Sleep(30 * time.Millisecond)
 		for i := range j.InfoChannels {
-			if in, ok = <-j.InfoChannels[i]; ok && !j.InactiveRacers[i] {
+			if in, ok = <-j.InfoChannels[i]; ok && !j.IsInactiveRacer[i] {
 				j.MutexRacersInfo.Lock()
+
+				if j.RacersInfo[i].Name != in.Name {
+					fmt.Println(j.RacersInfo[i].Name, in.Name)
+				}
+
 				j.RacersInfo[i] = in
 				j.MutexRacersInfo.Unlock()
 			}
 		}
-		time.Sleep(domain.LoopSleepTime)
 	}
 }
 
@@ -107,14 +113,14 @@ func (j *JudgeOfRace) startToJudge() {
 			nameOfRacerToStop = sortedInfo[len(sortedInfo) - 1 - j.InactiveCount].Name
 			racerIndex := j.findRacerIndexByName(nameOfRacerToStop)
 			if _, ok := <- j.InfoChannels[racerIndex]; ok {
-				j.InactiveRacers[racerIndex] = true
+				j.IsInactiveRacer[racerIndex] = true
 				j.InactiveCount++
 			}
 		}
 		if j.InactiveCount == len(j.InfoChannels)-1 {
 			j.MutexRacersInfo.RLock()
 			for i := range j.RacersInfo {
-				if !j.InactiveRacers[i] {
+				if !j.IsInactiveRacer[i] {
 					fmt.Println("The winner is " + j.RacersInfo[i].Name)
 				}
 			}

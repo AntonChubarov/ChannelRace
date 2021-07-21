@@ -9,6 +9,10 @@ import (
 )
 
 func main() {
+	//defer func() {
+	//	fmt.Scanln()
+	//}()
+
 	racers := make([]*app.RandomStepRacer, domain.Racers, domain.Racers)
 
 	stepChannel := make([]chan time.Time, domain.Racers, domain.Racers)
