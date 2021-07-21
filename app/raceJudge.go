@@ -50,19 +50,15 @@ func (j *JudgeOfRace) runRacersInfoCollect() {
 	var ok bool
 	var in domain.RacerInfo
 	for {
-		time.Sleep(30 * time.Millisecond)
+
 		for i := range j.InfoChannels {
 			if in, ok = <-j.InfoChannels[i]; ok && !j.IsInactiveRacer[i] {
 				j.MutexRacersInfo.Lock()
-
-				if j.RacersInfo[i].Name != in.Name {
-					fmt.Println(j.RacersInfo[i].Name, in.Name)
-				}
-
 				j.RacersInfo[i] = in
 				j.MutexRacersInfo.Unlock()
 			}
 		}
+		time.Sleep(20 * time.Millisecond)
 	}
 }
 
@@ -100,10 +96,13 @@ func (j *JudgeOfRace) runDisplayTicker() {
 }
 
 func (j *JudgeOfRace) startToJudge() {
+	sortedInfo := make([]domain.RacerInfo, len(j.RacersInfo))
 	for {
 		time.Sleep(domain.LoopSleepTime)
 		j.MutexRacersInfo.RLock()
-		sortedInfo := j.RacersInfo
+
+		copy(sortedInfo, j.RacersInfo)
+
 		j.MutexRacersInfo.RUnlock()
 		sort.SliceStable(sortedInfo, func(i, j int) bool {
 			return sortedInfo[i].Lap > sortedInfo[j].Lap
@@ -112,22 +111,19 @@ func (j *JudgeOfRace) startToJudge() {
 		if sortedInfo[len(sortedInfo) - 1 - j.InactiveCount].Lap < sortedInfo[len(sortedInfo) - 2 - j.InactiveCount].Lap {
 			nameOfRacerToStop = sortedInfo[len(sortedInfo) - 1 - j.InactiveCount].Name
 			racerIndex := j.findRacerIndexByName(nameOfRacerToStop)
-			if _, ok := <- j.InfoChannels[racerIndex]; ok {
 				j.IsInactiveRacer[racerIndex] = true
 				j.InactiveCount++
-			}
 		}
 		if j.InactiveCount == len(j.InfoChannels)-1 {
 			j.MutexRacersInfo.RLock()
 			for i := range j.RacersInfo {
 				if !j.IsInactiveRacer[i] {
-					fmt.Println("The winner is " + j.RacersInfo[i].Name)
+					fmt.Println("\nThe winner is " + j.RacersInfo[i].Name)
 				}
 			}
-			for i := range j.RacersInfo {
-				fmt.Println(j.RacersInfo[i].Name, "Score:", j.RacersInfo[i].Score)
+			for i := range sortedInfo{
+				fmt.Println(sortedInfo[i].Name, "Score:", sortedInfo[i].Score)
 			}
-			fmt.Println(j.RacersInfo)
 			j.MutexRacersInfo.RUnlock()
 			j.StopChannel <- true
 		}
