@@ -2,7 +2,8 @@ package app
 
 import (
 	"RacersRace/domain"
-	"math/rand"
+	"crypto/rand"
+	"math/big"
 	"time"
 )
 
@@ -36,14 +37,22 @@ func (r *RandomStepRacer) StartRace() {
 			Score: r.Score,
 			Lap: r.Lap,
 		}
-		//time.Sleep(domain.LoopSleepTime)
+		time.Sleep(domain.LoopSleepTime)
 	}
 }
 
 func (r *RandomStepRacer) makeStep() {
-	rand.Seed(time.Now().UnixNano())
-	points := 1 + rand.Intn(6)
+	points := 1 + randomInt(6)
 	r.Step++
 	r.Score += points
-	r.Lap = 1 + r.Score / 50
+	r.Lap = 1 + r.Score / domain.StepsInLap
+}
+
+func randomInt(max int) int {
+	nBig, err := rand.Int(rand.Reader, big.NewInt(int64(max)))
+	if err != nil {
+		panic(err)
+	}
+	n := nBig.Int64()
+	return int(n)
 }

@@ -3,10 +3,12 @@ package infrastructure
 import (
 	"RacersRace/domain"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"runtime"
 	"strconv"
+	"time"
 )
 
 type Console struct {
@@ -25,6 +27,7 @@ func (c Console) StartShowRaceSatus() {
 		info = <- c.DisplayChannel
 		CallClear()
 		showRaceInfo(info)
+		time.Sleep(domain.LoopSleepTime)
 	}
 }
 
@@ -38,14 +41,14 @@ func printRacerString(racerInfo domain.RacerInfo) {
 	racerString := ""
 	racerString += racerInfo.Name
 	racerString += " |"
-	for i := 0; i < 50; i++ {
-		if i < racerInfo.Score % 50 {
+	for i := 0; i < domain.StepsInLap; i++ {
+		if i < racerInfo.Score % domain.StepsInLap {
 			racerString += "-"
 		}
-		if i == racerInfo.Score % 50 {
+		if i == racerInfo.Score % domain.StepsInLap {
 			racerString += ">"
 		}
-		if i > racerInfo.Score % 50 {
+		if i > racerInfo.Score % domain.StepsInLap {
 			racerString += " "
 		}
 	}
@@ -58,27 +61,33 @@ func printRacerString(racerInfo domain.RacerInfo) {
 
 // Console clear
 
-var clear map[string]func() //create a map for storing clear funcs
+var clear map[string]func()
 
 func init() {
-	clear = make(map[string]func()) //Initialize it
+	clear = make(map[string]func())
 	clear["linux"] = func() {
-		cmd := exec.Command("clear") //Linux example, its tested
+		cmd := exec.Command("clear")
 		cmd.Stdout = os.Stdout
-		cmd.Run()
+		err := cmd.Run()
+		if err != nil {
+			log.Println("unable to perform console command")
+		}
 	}
 	clear["windows"] = func() {
-		cmd := exec.Command("cmd", "/c", "cls") //Windows example, its tested
+		cmd := exec.Command("cmd", "/c", "cls")
 		cmd.Stdout = os.Stdout
-		cmd.Run()
+		err := cmd.Run()
+		if err != nil {
+			log.Println("unable to perform console command")
+		}
 	}
 }
 
 func CallClear() {
-	value, ok := clear[runtime.GOOS] //runtime.GOOS -> linux, windows, darwin etc.
-	if ok { //if we defined a clear func for that platform:
-		value()  //we execute it
-	} else { //unsupported platform
+	value, ok := clear[runtime.GOOS]
+	if ok {
+		value()
+	} else { // unsupported platform
 		panic("Your platform is unsupported! I can't clear terminal screen :(")
 	}
 }

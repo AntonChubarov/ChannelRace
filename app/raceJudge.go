@@ -46,11 +46,9 @@ func (j *JudgeOfRace) StartRace() {
 }
 
 func (j *JudgeOfRace) runRacersInfoCollect() {
-
 	var ok bool
 	var in domain.RacerInfo
 	for {
-
 		for i := range j.InfoChannels {
 			if in, ok = <-j.InfoChannels[i]; ok && !j.IsInactiveRacer[i] {
 				j.MutexRacersInfo.Lock()
@@ -58,7 +56,7 @@ func (j *JudgeOfRace) runRacersInfoCollect() {
 				j.MutexRacersInfo.Unlock()
 			}
 		}
-		time.Sleep(20 * time.Millisecond)
+		time.Sleep(domain.LoopSleepTime)
 	}
 }
 
