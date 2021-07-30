@@ -10,15 +10,14 @@ import (
 
 type JudgeOfRace struct {
 	RacersInfo      []domain.RacerInfo
-	StepTicker      *time.Ticker
-	StepChannel     []chan time.Time
-	DisplayTicker   *time.Ticker
-	DisplayChannel  chan []domain.RacerInfo
+	StepCommander   *StepCommander
+	DisplayCommander *DisplayCommander
 	InfoChannels    []chan domain.RacerInfo
+	InfoCollector *InfoCollector
 	StopChannel     chan bool
 	IsInactiveRacer []bool
 	InactiveCount   int
-	MutexRacersInfo sync.RWMutex
+	MutexRacersInfo *sync.RWMutex
 }
 
 func NewRaceJudge(
@@ -27,70 +26,26 @@ func NewRaceJudge(
 	displayChannel chan []domain.RacerInfo,
 	stopChannel chan bool,
 	) *JudgeOfRace {
+	ri := make([]domain.RacerInfo, len(infoChannels))
+	isInactive := make([]bool, len(infoChannels))
+	mu := sync.RWMutex{}
 	return &JudgeOfRace{
-		RacersInfo:      make([]domain.RacerInfo, len(infoChannels)),
-		StepChannel:     stepChannel,
-		DisplayChannel:  displayChannel,
-		InfoChannels:    infoChannels,
-		StopChannel:     stopChannel,
-		IsInactiveRacer: make([]bool, len(infoChannels)),
-		MutexRacersInfo: sync.RWMutex{},
+		RacersInfo:       ri,
+		StepCommander:    NewStepCommander(stepChannel),
+		DisplayCommander: NewDisplayCommander(&ri, displayChannel, &mu),
+		InfoChannels:     infoChannels,
+		StopChannel:      stopChannel,
+		IsInactiveRacer:  isInactive,
+		MutexRacersInfo:  &mu,
+		InfoCollector:    NewInfoCollector(&ri, &infoChannels, &isInactive, &mu),
 	}
 }
 
 func (j *JudgeOfRace) StartRace() {
-	go j.runStepTicker()
-	go j.runDisplayTicker()
-	go j.runRacersInfoCollect()
+	go j.StepCommander.Run()
+	go j.DisplayCommander.Run()
+	go j.InfoCollector.Run()
 	go j.startToJudge()
-}
-
-func (j *JudgeOfRace) runRacersInfoCollect() {
-	var ok bool
-	var in domain.RacerInfo
-	for {
-		for i := range j.InfoChannels {
-			if in, ok = <-j.InfoChannels[i]; ok && !j.IsInactiveRacer[i] {
-				j.MutexRacersInfo.Lock()
-				j.RacersInfo[i] = in
-				j.MutexRacersInfo.Unlock()
-			}
-		}
-		time.Sleep(domain.LoopSleepTime)
-	}
-}
-
-func (j *JudgeOfRace) runStepTicker() {
-	j.StepTicker = time.NewTicker(domain.StepTime)
-	var s time.Time
-
-	for {
-		select {
-		case s = <-j.StepTicker.C:
-			for i := range j.StepChannel {
-				j.StepChannel[i] <- s
-			}
-		default:
-			continue
-		}
-		time.Sleep(domain.LoopSleepTime)
-	}
-}
-
-func (j *JudgeOfRace) runDisplayTicker() {
-	j.DisplayTicker = time.NewTicker(domain.DisplayTime)
-
-	for {
-		select {
-		case <-j.DisplayTicker.C:
-			j.MutexRacersInfo.RLock()
-			j.DisplayChannel <- j.RacersInfo
-			j.MutexRacersInfo.RUnlock()
-		default:
-			continue
-		}
-		time.Sleep(domain.LoopSleepTime)
-	}
 }
 
 func (j *JudgeOfRace) startToJudge() {
